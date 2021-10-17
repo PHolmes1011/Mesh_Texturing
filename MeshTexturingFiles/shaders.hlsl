@@ -22,8 +22,31 @@ PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD)
 {
     PSInput result;
 
-    result.position = position;
-    result.uv = uv;
+    float4 newPosition;
+    float4 newUV;
+    float angle = 1.0f;
+   
+    matrix <float, 4, 4> rotate = {
+        cos(angle), 0.0f,   -sin(angle),    0.0f,
+        0.0f,       1.0f,   0.0f,           0.0f,
+        sin(angle), 0.0f,   cos(angle),     0.0f,
+        0.0f,       0.0f,   0.0f,           1.0f
+    };
+    matrix <float, 4, 4> translate = {
+        1.0f,    0.0f,       0.0f,    0.0f,
+        0.0f,    1.0f,       0.0f,    0.0f,
+        0.0f,    0.0f,       1.0f,    0.0f,
+        0.0f,    0.0f,       0.2f,    1.0f
+    };
+
+    newPosition = mul(position, rotate);
+    newPosition = mul(newPosition, translate);
+
+    newUV = mul(uv, rotate);
+    newUV = mul(newUV, translate);
+
+    result.position = newPosition;
+    result.uv = newUV;
 
     return result;
 }

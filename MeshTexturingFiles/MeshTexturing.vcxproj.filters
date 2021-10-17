@@ -68,6 +68,9 @@
     <ClInclude Include="MeshTexturing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AssignmentScene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

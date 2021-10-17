@@ -12,6 +12,7 @@
 #pragma once
 
 #include "DXSample.h"
+#include "AssignmentScene.h"
 
 using namespace DirectX;
 
@@ -38,12 +39,7 @@ private:
     static const UINT TextureHeight = 256;
     static const UINT TexturePixelSize = 4;    // The number of bytes used to represent a pixel in the texture.
 
-    struct Vertex
-    {
-        XMFLOAT3 position;
-        XMFLOAT2 uv;
-    };
-
+    
     // Pipeline objects.
     CD3DX12_VIEWPORT m_viewport;
     CD3DX12_RECT m_scissorRect;
@@ -63,6 +59,7 @@ private:
     ComPtr<ID3D12Resource> m_vertexBuffer;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
     ComPtr<ID3D12Resource> m_texture;
+    ISLAND IslandMap;
 
     // Synchronization objects.
     UINT m_frameIndex;
