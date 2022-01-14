@@ -17,6 +17,13 @@ using namespace DirectX::PackedVector;
 
 const int gNumFrameResources = 3;
 
+const XMFLOAT2 coinSpin[]{
+	{ 0.02f, 0.05f}, { 0.28f, 0.05f },
+	{ 0.52f, 0.05f}, { 0.77f, 0.05f },
+	{ 0.02f, 0.555f}, {0.28f, 0.555f},
+	{ 0.52f, 0.555f}, {0.77f, 0.555f }
+};
+
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -128,6 +135,9 @@ private:
     float mRadius = 15.0f;
 
     POINT mLastMousePos;
+
+	uint16_t mI = 0;
+	float mClock = 0;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -359,7 +369,34 @@ void TexColumnsApp::UpdateCamera(const GameTimer& gt)
 
 void TexColumnsApp::AnimateMaterials(const GameTimer& gt)
 {
-	
+	// Scroll the water material texture coordinates.
+	auto coinMat = mMaterials["stone0"].get();
+
+	float& tu = coinMat->MatTransform(3, 0);
+	float& tv = coinMat->MatTransform(3, 1);
+
+	float xScale = .2f;
+	float yScale = .4f;
+
+	tu = coinSpin[mI].x;
+	tv = coinSpin[mI].y;
+
+	mClock++;
+	if (mClock == 180) {
+		mI++;
+		mClock = 0;
+	}
+
+	if (mI > 8)
+		mI = 0;
+
+	coinMat->MatTransform(3, 0) = tu;
+	coinMat->MatTransform(3, 1) = tv;
+	coinMat->MatTransform(0, 0) = xScale;
+	coinMat->MatTransform(1, 1) = yScale;
+
+	// Material has changed, so need to update cbuffer.
+	coinMat->NumFramesDirty = gNumFrameResources;
 }
 
 void TexColumnsApp::UpdateObjectCBs(const GameTimer& gt)
@@ -470,9 +507,17 @@ void TexColumnsApp::LoadTextures()
 		mCommandList.Get(), tileTex->Filename.c_str(),
 		tileTex->Resource, tileTex->UploadHeap));
 
+	auto coinTex = std::make_unique<Texture>();
+	coinTex->Name = "coinTex";
+	coinTex->Filename = L"Coin.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), coinTex->Filename.c_str(),
+		coinTex->Resource, coinTex->UploadHeap));
+
 	mTextures[bricksTex->Name] = std::move(bricksTex);
 	mTextures[stoneTex->Name] = std::move(stoneTex);
 	mTextures[tileTex->Name] = std::move(tileTex);
+	mTextures[coinTex->Name] = std::move(coinTex);
 }
 
 void TexColumnsApp::BuildRootSignature()
@@ -524,7 +569,7 @@ void TexColumnsApp::BuildDescriptorHeaps()
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 3;
+	srvHeapDesc.NumDescriptors = 4;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -537,6 +582,7 @@ void TexColumnsApp::BuildDescriptorHeaps()
 	auto bricksTex = mTextures["bricksTex"]->Resource;
 	auto stoneTex = mTextures["stoneTex"]->Resource;
 	auto tileTex = mTextures["tileTex"]->Resource;
+	auto coinTex = mTextures["coinTex"]->Resource;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -560,6 +606,13 @@ void TexColumnsApp::BuildDescriptorHeaps()
 	srvDesc.Format = tileTex->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = tileTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(tileTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = coinTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = coinTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(coinTex.Get(), &srvDesc, hDescriptor);
 }
 
 void TexColumnsApp::BuildShadersAndInputLayout()
@@ -760,7 +813,7 @@ void TexColumnsApp::BuildMaterials()
 	auto stone0 = std::make_unique<Material>();
 	stone0->Name = "stone0";
 	stone0->MatCBIndex = 1;
-	stone0->DiffuseSrvHeapIndex = 1;
+	stone0->DiffuseSrvHeapIndex = 3;
 	stone0->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
     stone0->FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
     stone0->Roughness = 0.3f;
@@ -842,7 +895,7 @@ void TexColumnsApp::BuildRenderItems()
 		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
 		leftSphereRitem->TexTransform = MathHelper::Identity4x4();
 		leftSphereRitem->ObjCBIndex = objCBIndex++;
-		leftSphereRitem->Mat = mMaterials["stone0"].get();
+		leftSphereRitem->Mat = mMaterials["bricks0"].get();
 		leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
 		leftSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
@@ -852,7 +905,7 @@ void TexColumnsApp::BuildRenderItems()
 		XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
 		rightSphereRitem->TexTransform = MathHelper::Identity4x4();
 		rightSphereRitem->ObjCBIndex = objCBIndex++;
-		rightSphereRitem->Mat = mMaterials["stone0"].get();
+		rightSphereRitem->Mat = mMaterials["bricks0"].get();
 		rightSphereRitem->Geo = mGeometries["shapeGeo"].get();
 		rightSphereRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
