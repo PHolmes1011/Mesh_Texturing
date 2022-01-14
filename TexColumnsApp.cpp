@@ -375,21 +375,26 @@ void TexColumnsApp::AnimateMaterials(const GameTimer& gt)
 	float& tu = coinMat->MatTransform(3, 0);
 	float& tv = coinMat->MatTransform(3, 1);
 
+	// Make the coin fill the face
 	float xScale = .2f;
 	float yScale = .4f;
 
+	// Translate the texture
 	tu = coinSpin[mI].x;
 	tv = coinSpin[mI].y;
 
+	// Slow it down
 	mClock++;
 	if (mClock == 180) {
 		mI++;
 		mClock = 0;
 	}
 
+	// Loop back around
 	if (mI > 8)
 		mI = 0;
 
+	// Fill out the positions in the matrix
 	coinMat->MatTransform(3, 0) = tu;
 	coinMat->MatTransform(3, 1) = tv;
 	coinMat->MatTransform(0, 0) = xScale;
