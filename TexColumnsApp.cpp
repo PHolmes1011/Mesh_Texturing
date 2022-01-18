@@ -385,13 +385,13 @@ void TexColumnsApp::AnimateMaterials(const GameTimer& gt)
 
 	// Slow it down
 	mClock++;
-	if (mClock == 180) {
+	if (mClock == 150) {
 		mI++;
 		mClock = 0;
 	}
 
 	// Loop back around
-	if (mI > 8)
+	if (mI > 7)
 		mI = 0;
 
 	// Fill out the positions in the matrix
